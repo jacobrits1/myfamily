@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">My Family</string>
+    <string name="autofill_service_description">Autofill family member information from My Family app</string>
+</resources>
+
