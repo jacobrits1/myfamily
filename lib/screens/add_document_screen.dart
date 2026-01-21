@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/family_member.dart';
@@ -6,6 +7,7 @@ import '../models/document.dart';
 import '../services/database_service.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
+import '../utils/image_helper.dart';
 
 // Simple document add screen with title, camera, and gallery
 class AddDocumentScreen extends StatefulWidget {
@@ -25,7 +27,8 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
 
   List<FamilyMember> _members = [];
   FamilyMember? _selectedMember;
-  File? _selectedImage;
+  String? _selectedImagePath; // Store path instead of File for web compatibility
+  XFile? _selectedImageFile; // Store XFile for web blob URL conversion
   bool _isSaving = false;
 
   @override
@@ -62,7 +65,8 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
 
       if (image != null) {
         setState(() {
-          _selectedImage = File(image.path);
+          _selectedImageFile = image;
+          _selectedImagePath = ImageHelper.getImagePath(image);
         });
       }
     } catch (e) {
@@ -85,7 +89,8 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
 
       if (image != null) {
         setState(() {
-          _selectedImage = File(image.path);
+          _selectedImageFile = image;
+          _selectedImagePath = ImageHelper.getImagePath(image);
         });
       }
     } catch (e) {
@@ -121,14 +126,15 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                 _pickFromGallery();
               },
             ),
-            if (_selectedImage != null)
+            if (_selectedImagePath != null)
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
                 title: const Text('Remove Photo', style: TextStyle(color: Colors.red)),
                 onTap: () {
                   Navigator.pop(context);
                   setState(() {
-                    _selectedImage = null;
+                    _selectedImagePath = null;
+                    _selectedImageFile = null;
                   });
                 },
               ),
@@ -140,7 +146,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
 
   // Save document
   Future<void> _saveDocument() async {
-    if (_selectedImage == null) {
+    if (_selectedImagePath == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a photo')),
       );
@@ -168,7 +174,23 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
     try {
       // Save image file
       final fileName = 'doc_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final savedPath = await _storageService.saveImage(_selectedImage!, fileName);
+      String savedPath;
+      
+      // On web, convert to blob URL or use existing blob/data URL
+      if (kIsWeb) {
+        if (_selectedImageFile != null) {
+          // Convert XFile to blob URL on web
+          final blobUrl = await ImageHelper.convertToBlobUrl(_selectedImageFile!);
+          savedPath = blobUrl ?? _selectedImagePath!;
+        } else {
+          // Use existing path (might already be blob URL or data URL)
+          savedPath = _selectedImagePath!;
+        }
+      } else {
+        // On mobile, save the file
+        final file = File(_selectedImagePath!);
+        savedPath = await _storageService.saveImage(file, fileName);
+      }
 
       // Create document record
       final document = Document(
@@ -309,11 +331,11 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                               width: 2,
                             ),
                           ),
-                          child: _selectedImage != null
+                          child: _selectedImagePath != null
                               ? ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
-                                  child: Image.file(
-                                    _selectedImage!,
+                                  child: ImageHelper.getImageWidget(
+                                    _selectedImagePath!,
                                     fit: BoxFit.cover,
                                   ),
                                 )

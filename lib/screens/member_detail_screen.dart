@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/family_member.dart';
 import '../models/document.dart';
@@ -6,6 +5,7 @@ import '../models/custom_field.dart';
 import '../services/database_service.dart';
 import '../widgets/document_item.dart';
 import '../utils/constants.dart';
+import '../utils/image_helper.dart';
 import 'add_edit_member_screen.dart';
 import 'add_document_screen.dart';
 
@@ -149,7 +149,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
             radius: 40,
             backgroundColor: const Color(AppConstants.primaryColor),
             backgroundImage: _currentMember!.profileImagePath != null
-                ? FileImage(File(_currentMember!.profileImagePath!))
+                ? ImageHelper.getImageProvider(_currentMember!.profileImagePath!)
                 : null,
             child: _currentMember!.profileImagePath == null
                 ? const Icon(Icons.person, color: Colors.white, size: 40)

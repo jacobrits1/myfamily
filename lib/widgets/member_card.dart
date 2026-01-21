@@ -1,7 +1,7 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/family_member.dart';
 import '../utils/constants.dart';
+import '../utils/image_helper.dart';
 
 // Family member card widget
 class MemberCard extends StatelessWidget {
@@ -34,7 +34,7 @@ class MemberCard extends StatelessWidget {
                 radius: 30,
                 backgroundColor: const Color(AppConstants.primaryColor),
                 backgroundImage: member.profileImagePath != null
-                    ? FileImage(File(member.profileImagePath!))
+                    ? ImageHelper.getImageProvider(member.profileImagePath!)
                     : null,
                 child: member.profileImagePath == null
                     ? const Icon(Icons.person, color: Colors.white, size: 30)

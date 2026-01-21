@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/family_member.dart';
@@ -6,6 +7,7 @@ import '../models/custom_field.dart';
 import '../services/database_service.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
+import '../utils/image_helper.dart';
 
 // Add/Edit member screen
 class AddEditMemberScreen extends StatefulWidget {
@@ -39,7 +41,8 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
   List<CustomField> _customFields = [];
   bool _isLoading = false;
   String? _profileImagePath;
-  File? _selectedImage;
+  String? _selectedImagePath; // Store path instead of File for web compatibility
+  XFile? _selectedImageFile; // Store XFile for web blob URL conversion
 
   @override
   void initState() {
@@ -85,7 +88,7 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
     if (widget.member!.profileImagePath != null) {
       setState(() {
         _profileImagePath = widget.member!.profileImagePath;
-        _selectedImage = File(widget.member!.profileImagePath!);
+        _selectedImagePath = widget.member!.profileImagePath;
       });
     }
 
@@ -111,9 +114,23 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
     try {
       // Save profile image if new one selected
       String? savedImagePath = _profileImagePath;
-      if (_selectedImage != null && _selectedImage!.path != _profileImagePath) {
-        final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        savedImagePath = await _storageService.saveImage(_selectedImage!, fileName);
+      if (_selectedImagePath != null && _selectedImagePath != _profileImagePath) {
+        // On web, convert to blob URL or use existing blob/data URL
+        if (kIsWeb) {
+          if (_selectedImageFile != null) {
+            // Convert XFile to blob URL on web
+            final blobUrl = await ImageHelper.convertToBlobUrl(_selectedImageFile!);
+            savedImagePath = blobUrl ?? _selectedImagePath;
+          } else {
+            // Use existing path (might already be blob URL or data URL)
+            savedImagePath = _selectedImagePath;
+          }
+        } else {
+          // On mobile, save the file
+          final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final file = File(_selectedImagePath!);
+          savedImagePath = await _storageService.saveImage(file, fileName);
+        }
       }
 
       final member = FamilyMember(
@@ -200,8 +217,9 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
 
       if (image != null) {
         setState(() {
-          _selectedImage = File(image.path);
-          _profileImagePath = image.path;
+          _selectedImageFile = image;
+          _selectedImagePath = ImageHelper.getImagePath(image);
+          _profileImagePath = _selectedImagePath;
         });
       }
     } catch (e) {
@@ -237,15 +255,16 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
                 _pickImage(ImageSource.gallery);
               },
             ),
-            if (_selectedImage != null)
+            if (_selectedImagePath != null)
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
                 title: const Text('Remove Photo', style: TextStyle(color: Colors.red)),
                 onTap: () {
                   Navigator.pop(context);
                   setState(() {
-                    _selectedImage = null;
+                    _selectedImagePath = null;
                     _profileImagePath = null;
+                    _selectedImageFile = null;
                   });
                 },
               ),
@@ -336,10 +355,10 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
                             CircleAvatar(
                               radius: 60,
                               backgroundColor: const Color(AppConstants.primaryColor),
-                              backgroundImage: _selectedImage != null
-                                  ? FileImage(_selectedImage!)
+                              backgroundImage: _selectedImagePath != null
+                                  ? ImageHelper.getImageProvider(_selectedImagePath!)
                                   : null,
-                              child: _selectedImage == null
+                              child: _selectedImagePath == null
                                   ? const Icon(Icons.person, color: Colors.white, size: 60)
                                   : null,
                             ),
@@ -367,7 +386,7 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
                         onPressed: _showImageSourceDialog,
                         icon: const Icon(Icons.add_photo_alternate),
                         label: Text(
-                          _selectedImage != null ? 'Change Photo' : 'Add Photo',
+                          _selectedImagePath != null ? 'Change Photo' : 'Add Photo',
                         ),
                         style: TextButton.styleFrom(
                           foregroundColor: const Color(AppConstants.primaryColor),
