@@ -67,4 +67,3 @@ class StorageService {
     return savedFile.path;
   }
 }
-

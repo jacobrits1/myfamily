@@ -449,4 +449,3 @@ class _DocumentParseScreenState extends State<DocumentParseScreen> {
     );
   }
 }
-
