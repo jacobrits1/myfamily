@@ -13,6 +13,7 @@ class FamilyMember {
   final String? ssn;
   final String? studentId;
   final String? profileImagePath;
+  final bool isSelf;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -30,6 +31,7 @@ class FamilyMember {
     this.ssn,
     this.studentId,
     this.profileImagePath,
+    this.isSelf = false,
     DateTime? createdAt,
     DateTime? updatedAt,
   })  : createdAt = createdAt ?? DateTime.now(),
@@ -51,6 +53,7 @@ class FamilyMember {
       'ssn': ssn,
       'student_id': studentId,
       'profile_image_path': profileImagePath,
+      'is_self': isSelf ? 1 : 0,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -72,6 +75,7 @@ class FamilyMember {
       ssn: map['ssn'] as String?,
       studentId: map['student_id'] as String?,
       profileImagePath: map['profile_image_path'] as String?,
+      isSelf: (map['is_self'] as int? ?? 0) == 1,
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'] as String)
           : null,
@@ -96,6 +100,7 @@ class FamilyMember {
     String? ssn,
     String? studentId,
     String? profileImagePath,
+    bool? isSelf,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -113,6 +118,7 @@ class FamilyMember {
       ssn: ssn ?? this.ssn,
       studentId: studentId ?? this.studentId,
       profileImagePath: profileImagePath ?? this.profileImagePath,
+      isSelf: isSelf ?? this.isSelf,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
     );

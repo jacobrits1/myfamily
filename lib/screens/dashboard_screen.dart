@@ -8,9 +8,7 @@ import 'add_edit_member_screen.dart';
 
 // Dashboard screen with family members list
 class DashboardScreen extends StatefulWidget {
-  final VoidCallback? onLogout;
-  
-  const DashboardScreen({super.key, this.onLogout});
+  const DashboardScreen({super.key});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -79,32 +77,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // Show logout confirmation dialog
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout? You will need to authenticate again to access your family information.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              widget.onLogout?.call();
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-  }
 
   // Navigate to add member screen
   Future<void> _navigateToAddMember() async {
@@ -137,38 +109,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(AppConstants.textColor)),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
-          'My Family',
+          'Members',
           style: TextStyle(
             color: Color(AppConstants.textColor),
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(
-              Icons.more_vert,
-              color: Color(AppConstants.textColor),
-            ),
-            onSelected: (value) {
-              if (value == 'logout') {
-                _showLogoutDialog();
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text('Logout', style: TextStyle(color: Colors.red)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
       body: Column(
         children: [

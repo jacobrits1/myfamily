@@ -8,49 +8,61 @@ import '../utils/constants.dart';
 import '../utils/image_helper.dart';
 import 'add_edit_member_screen.dart';
 import 'add_document_screen.dart';
+import 'backup_screen.dart';
 
-// Member detail screen
-class MemberDetailScreen extends StatefulWidget {
-  final FamilyMember member;
-
-  const MemberDetailScreen({super.key, required this.member});
+// My Profile screen - shows the current user's own profile
+class MyProfileScreen extends StatefulWidget {
+  const MyProfileScreen({super.key});
 
   @override
-  State<MemberDetailScreen> createState() => _MemberDetailScreenState();
+  State<MyProfileScreen> createState() => _MyProfileScreenState();
 }
 
-class _MemberDetailScreenState extends State<MemberDetailScreen> {
+class _MyProfileScreenState extends State<MyProfileScreen> {
   final DatabaseService _dbService = DatabaseService();
   List<Document> _documents = [];
   List<CustomField> _customFields = [];
-  FamilyMember? _currentMember;
+  FamilyMember? _selfMember;
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _currentMember = widget.member;
     _loadData();
   }
 
-  // Load member data, documents, and custom fields
+  // Load self member data, documents, and custom fields
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Refresh member data
-      final member = await _dbService.getFamilyMemberById(widget.member.id!);
-      if (member != null) {
-        _currentMember = member;
+      // Load self member
+      final selfMember = await _dbService.getSelfMember();
+      
+      if (selfMember == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No profile set. Please add yourself as a family member and mark as "This is me".'),
+            ),
+          );
+          Navigator.pop(context);
+        }
+        return;
       }
 
+      _selfMember = selfMember;
+
       // Load documents
-      final documents = await _dbService.getDocumentsForMember(widget.member.id!);
+      final documents = await _dbService.getDocumentsForMember(selfMember.id!);
       
       // Load custom fields
-      final customFields = await _dbService.getCustomFieldsForMember(widget.member.id!);
+      final customFields = await _dbService.getCustomFieldsForMember(selfMember.id!);
 
       setState(() {
         _documents = documents;
@@ -63,7 +75,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading data: $e')),
+          SnackBar(content: Text('Error loading profile: $e')),
         );
       }
     }
@@ -74,7 +86,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddEditMemberScreen(member: _currentMember),
+        builder: (context) => AddEditMemberScreen(member: _selfMember),
       ),
     );
 
@@ -85,9 +97,45 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading || _currentMember == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: const Color(AppConstants.backgroundColor),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          title: const Text(
+            'My Profile',
+            style: TextStyle(
+              color: Color(AppConstants.textColor),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_selfMember == null) {
+      return Scaffold(
+        backgroundColor: const Color(AppConstants.backgroundColor),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Color(AppConstants.textColor)),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: const Text(
+            'My Profile',
+            style: TextStyle(
+              color: Color(AppConstants.textColor),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        body: const Center(
+          child: Text('No profile found. Please add yourself as a family member.'),
+        ),
       );
     }
 
@@ -100,20 +148,18 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
           icon: const Icon(Icons.arrow_back, color: Color(AppConstants.textColor)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          _currentMember!.isSelf ? 'Me' : _currentMember!.fullName,
-          style: const TextStyle(
+        title: const Text(
+          'My Profile',
+          style: TextStyle(
             color: Color(AppConstants.textColor),
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
-          // Only show edit button if not viewing self member (self members use MyProfileScreen)
-          if (!_currentMember!.isSelf)
-            IconButton(
-              icon: const Icon(Icons.edit, color: Color(AppConstants.primaryColor)),
-              onPressed: _navigateToEdit,
-            ),
+          IconButton(
+            icon: const Icon(Icons.edit, color: Color(AppConstants.primaryColor)),
+            onPressed: _navigateToEdit,
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -125,6 +171,9 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
             
             // Summary section
             _buildSummarySection(),
+            
+            // Backup section
+            _buildBackupSection(),
             
             // Information section
             _buildInformationSection(),
@@ -150,10 +199,10 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
           CircleAvatar(
             radius: 40,
             backgroundColor: const Color(AppConstants.primaryColor),
-            backgroundImage: _currentMember!.profileImagePath != null
-                ? ImageHelper.getImageProvider(_currentMember!.profileImagePath!)
+            backgroundImage: _selfMember!.profileImagePath != null
+                ? ImageHelper.getImageProvider(_selfMember!.profileImagePath!)
                 : null,
-            child: _currentMember!.profileImagePath == null
+            child: _selfMember!.profileImagePath == null
                 ? const Icon(Icons.person, color: Colors.white, size: 40)
                 : null,
           ),
@@ -163,17 +212,17 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _currentMember!.isSelf ? 'Me' : _currentMember!.fullName,
+                  _selfMember!.fullName,
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Color(AppConstants.textColor),
                   ),
                 ),
-                if (_currentMember!.email != null) ...[
+                if (_selfMember!.email != null) ...[
                   const SizedBox(height: 4),
                   Text(
-                    _currentMember!.email!,
+                    _selfMember!.email!,
                     style: const TextStyle(
                       fontSize: 14,
                       color: Color(0xFF6B7280),
@@ -242,6 +291,84 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
     );
   }
 
+  // Build backup section
+  Widget _buildBackupSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Backup & Restore',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(AppConstants.textColor),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Back up all your family data, documents, and settings to the cloud. Restore your data anytime.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                if (_selfMember?.email == null || _selfMember!.email!.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please add an email address to your profile to use backup.'),
+                    ),
+                  );
+                  return;
+                }
+                
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => BackupScreen(userEmail: _selfMember!.email!),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.cloud_upload, color: Colors.white),
+              label: const Text(
+                'Backup',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(AppConstants.primaryColor),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Build information section
   Widget _buildInformationSection() {
     return Container(
@@ -270,15 +397,15 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildInfoRow('Phone', _currentMember!.phone),
-          _buildInfoRow('Date of Birth', _currentMember!.dateOfBirth),
-          _buildInfoRow('Address', _currentMember!.address),
-          if (_currentMember!.city != null || _currentMember!.state != null)
+          _buildInfoRow('Phone', _selfMember!.phone),
+          _buildInfoRow('Date of Birth', _selfMember!.dateOfBirth),
+          _buildInfoRow('Address', _selfMember!.address),
+          if (_selfMember!.city != null || _selfMember!.state != null)
             _buildInfoRow(
               'City/State',
-              '${_currentMember!.city ?? ''}${_currentMember!.city != null && _currentMember!.state != null ? ', ' : ''}${_currentMember!.state ?? ''}',
+              '${_selfMember!.city ?? ''}${_selfMember!.city != null && _selfMember!.state != null ? ', ' : ''}${_selfMember!.state ?? ''}',
             ),
-          _buildInfoRow('Student ID', _currentMember!.studentId),
+          _buildInfoRow('Student ID', _selfMember!.studentId),
         ],
       ),
     );
@@ -411,24 +538,22 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                   color: Color(AppConstants.textColor),
                 ),
               ),
-              // Only show add document button if not viewing self member (read-only for family members)
-              if (!_currentMember!.isSelf)
-                TextButton(
-                  onPressed: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AddDocumentScreen(
-                          preSelectedMember: _currentMember,
-                        ),
+              TextButton(
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AddDocumentScreen(
+                        preSelectedMember: _selfMember,
                       ),
-                    );
-                    if (result == true) {
-                      _loadData();
-                    }
-                  },
-                  child: const Text('Add Document'),
-                ),
+                    ),
+                  );
+                  if (result == true) {
+                    _loadData();
+                  }
+                },
+                child: const Text('Add Document'),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -451,4 +576,3 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
     );
   }
 }
-

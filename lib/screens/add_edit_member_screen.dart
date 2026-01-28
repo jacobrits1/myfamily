@@ -40,6 +40,7 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
 
   List<CustomField> _customFields = [];
   bool _isLoading = false;
+  bool _isSelf = false; // Checkbox state for "This is me"
   String? _profileImagePath;
   String? _selectedImagePath; // Store path instead of File for web compatibility
   XFile? _selectedImageFile; // Store XFile for web blob URL conversion
@@ -91,6 +92,11 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
         _selectedImagePath = widget.member!.profileImagePath;
       });
     }
+
+    // Load isSelf status
+    setState(() {
+      _isSelf = widget.member!.isSelf;
+    });
 
     // Load custom fields
     if (widget.member!.id != null) {
@@ -188,6 +194,14 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
           // Update existing custom field
           await _dbService.updateCustomField(field);
         }
+      }
+
+      // Set as self member if checkbox is checked
+      if (_isSelf) {
+        await _dbService.setSelfMember(memberId);
+      } else if (widget.member?.id != null && widget.member!.isSelf) {
+        // If unchecking, unset as self
+        await _dbService.unsetSelfMember(memberId);
       }
 
       if (mounted) {
@@ -474,6 +488,27 @@ class _AddEditMemberScreenState extends State<AddEditMemberScreen> {
                   label: 'SSN',
                   keyboardType: TextInputType.number,
                   obscureText: true,
+                ),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  title: const Text(
+                    'This is me',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Set this member as your profile',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  value: _isSelf,
+                  onChanged: (value) {
+                    setState(() {
+                      _isSelf = value ?? false;
+                    });
+                  },
+                  activeColor: const Color(AppConstants.primaryColor),
                 ),
               ],
             ),

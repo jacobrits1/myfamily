@@ -1,0 +1,99 @@
+---
+description: Android emulator testing guidelines and procedures
+alwaysApply: true
+---
+
+# Android Emulator Testing
+
+## Testing Requirements
+
+When testing Flutter applications, **always test on Android emulator** before considering features complete.
+
+## Setup and Execution
+
+### 1. Check Available Devices
+```bash
+flutter devices
+```
+
+### 2. Run on Android Emulator
+```bash
+flutter run -d emulator-5554
+```
+Or use the device name from `flutter devices` output.
+
+### 3. Build Time Expectations
+- First build: 5-10 minutes (Gradle dependencies download)
+- Subsequent builds: 2-5 minutes
+- Hot reload: Instant (after initial build)
+
+## Testing Checklist
+
+After deploying to Android emulator, verify:
+
+1. **Authentication Flow**
+   - PIN setup works correctly
+   - Biometric authentication (if available)
+   - Authentication state persists
+
+2. **Landing Page**
+   - All three navigation buttons display correctly
+   - Button colors and icons render properly
+   - Navigation works to all screens
+
+3. **Members Screen**
+   - Database operations work (add, view, edit, delete)
+   - Search functionality
+   - Member cards display correctly
+
+4. **Lists Screen**
+   - Placeholder displays correctly
+   - Back navigation works
+
+5. **Location Screen**
+   - Location permissions requested
+   - Map displays correctly
+   - User location marker shows
+   - Refresh button works
+   - No MapController errors
+
+6. **Navigation**
+   - Back buttons work on all screens
+   - Navigation stack is correct
+   - No memory leaks or crashes
+
+## Monitoring
+
+### Check Logs
+Monitor terminal output for:
+- Build completion: `√ Built build\app\outputs\flutter-apk\app-debug.apk`
+- Installation: `Installing build\app\outputs\flutter-apk\app-debug.apk...`
+- Flutter engine: `D/FlutterJNI: Beginning load of flutter...`
+- Service initialization: `D/FlutterGeolocator: Attaching Geolocator to activity`
+
+### Common Issues
+- **Build timeout**: Wait for Gradle to complete (can take 10+ minutes on first build)
+- **Permission errors**: Check AndroidManifest.xml for required permissions
+- **MapController errors**: Ensure map is rendered before using controller
+- **Database errors**: Verify SQLite is properly initialized
+
+## Best Practices
+
+1. **Always test on emulator** before marking features complete
+2. **Wait for full build** - don't interrupt Gradle process
+3. **Test all navigation paths** - verify back buttons and screen transitions
+4. **Check permissions** - location, storage, camera permissions work correctly
+5. **Monitor logs** - watch for errors or warnings during runtime
+6. **Test on clean install** - verify app works on fresh installation
+
+## Web vs Mobile Testing
+
+- **Web testing**: Limited functionality (use for UI layout verification only)
+- **Android emulator**: Full functionality testing (recommended)
+- **iOS simulator**: Use when iOS-specific features are added
+
+## Notes
+
+- Android emulator provides the most accurate testing environment
+- All mobile-specific features (SQLite, biometrics, location) work correctly
+- Web platform has limitations documented in WEB_LIMITATIONS.md

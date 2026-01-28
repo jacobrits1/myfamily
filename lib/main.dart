@@ -1,9 +1,19 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/auth_screen.dart';
-import 'screens/dashboard_screen.dart';
+import 'screens/landing_screen.dart';
 import 'utils/constants.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Supabase
+  await Supabase.initialize(
+    url: AppConstants.supabaseUrl,
+    anonKey: AppConstants.supabaseAnonKey,
+  );
+  
   runApp(const MyApp());
 }
 
@@ -58,9 +68,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   @override
   Widget build(BuildContext context) {
+    // On web, skip authentication for testing purposes
+    // In production, you would want proper web authentication
+    if (kIsWeb) {
+      return LandingScreen(onLogout: _onLogout);
+    }
+
     if (!_isAuthenticated) {
       return AuthScreen(onAuthenticated: _onAuthenticated);
     }
-    return DashboardScreen(onLogout: _onLogout);
+    return LandingScreen(onLogout: _onLogout);
   }
 }
